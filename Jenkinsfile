@@ -16,15 +16,36 @@ pipeline {
                 sh "mvn clean compile"
             }
         }
-        stage('Test') {
-            steps {
-                sh "mvn -Dmaven.compile.skip test"
-            }
-        }
+
         stage('Package') {
             steps {
                 sh "mvn -Dmaven.test.skip -Dmaven.compile.skip package"
             }
         }
+        stage ('SonarQube Analysis') {
+            environment {
+                 scannerHome = tool 'sonarqube'
+            }
+            steps {
+                 withSonarQubeEnv('sonar-qube-1') {
+                 sh "${scannerHome}/bin/sonar-scanner"
+            }
+                 timeout(time: 10, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: true
+                 }
+            }
+        }
+        stage('Test') {
+            steps {
+                 sh "mvn -Dmaven.compile.skip test"
+            }
+        }
+        stage('Archive Artifact') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.jar',
+                allowEmptyArchive: false
+            }
+        }
+
     }
 }
